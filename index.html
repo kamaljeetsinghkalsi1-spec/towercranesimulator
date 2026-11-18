@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101827">
+<title>Tower Crane Simulator</title>
+<style>
+:root{--bg:#101827;--panel:#192538;--panel2:#223249;--line:#34465f;--text:#eef4ff;--muted:#a9b8cc;--accent:#f4b942;--green:#53d69a;--red:#ff6b6b}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(circle at 50% -20%,#263b58,#101827 60%);color:var(--text);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+.wrap{max-width:1180px;margin:auto;padding:18px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+h1{font-size:clamp(22px,4vw,32px);margin:0;letter-spacing:.2px}
+.sub{color:var(--muted);font-size:13px}
+.pill{border:1px solid var(--line);background:#172438;border-radius:999px;padding:7px 12px;color:var(--muted);font-size:12px}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;align-items:start}
+.gamebox,.panel{background:linear-gradient(180deg,#1c2a3e,#172336);border:1px solid var(--line);border-radius:16px;box-shadow:0 12px 32px #0003;overflow:hidden}
+.game-top{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line);gap:10px;flex-wrap:wrap}
+.status{font-size:13px;color:var(--muted)}
+canvas{display:block;width:100%;height:auto;aspect-ratio:16/9;background:#b8d9e9;touch-action:none}
+.game-bottom{display:flex;gap:8px;flex-wrap:wrap;padding:11px 13px;border-top:1px solid var(--line)}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:#263951;color:var(--text);padding:9px 12px;border-radius:10px;font-weight:650}
+button:hover{filter:brightness(1.12)}button:focus-visible{outline:3px solid #f4b942;outline-offset:2px}
+button.primary{background:var(--accent);color:#1a2431;border-color:#f4b942}
+button.danger{background:#592e39;border-color:#914351}
+button:disabled{opacity:.4;cursor:not-allowed}
+.panel{padding:14px}
+.panel h2{font-size:16px;margin:0 0 10px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+.stat{background:#101c2c;border:1px solid #2c4059;border-radius:11px;padding:9px}
+.stat small{display:block;color:var(--muted);font-size:11px}.stat strong{font-size:18px}
+.mission{padding:11px;background:#101c2c;border:1px solid #2c4059;border-radius:12px;margin-bottom:14px}
+.mission strong{display:block;margin-bottom:4px}.mission p{margin:0;color:var(--muted);font-size:13px}
+.progress{height:7px;background:#2b3c52;border-radius:20px;overflow:hidden;margin-top:10px}.progress span{display:block;height:100%;width:0;background:var(--green);transition:width .2s}
+.control{margin:12px 0}.control label{display:flex;justify-content:space-between;color:var(--muted);font-size:13px;margin-bottom:6px}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.control-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.control-grid button{min-height:43px}
+.hint{font-size:12px;color:var(--muted);margin-top:12px}
+.key{display:inline-block;padding:1px 6px;border:1px solid #52647b;border-radius:5px;color:#fff;background:#25374d}
+.notice{padding:9px 10px;border-radius:9px;background:#152a2a;border:1px solid #28564b;color:#baf3d8;font-size:12px;min-height:38px}
+.overlay{position:fixed;inset:0;background:#07101dcc;display:flex;align-items:center;justify-content:center;padding:18px;z-index:5}
+.dialog{width:min(460px,100%);background:#1b2a3e;border:1px solid #52647b;border-radius:18px;padding:22px;box-shadow:0 20px 70px #0009}
+.dialog h2{margin:0 0 8px;font-size:25px}.dialog p{color:var(--muted)}
+.dialog-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.mobile-controls{display:none}
+footer{text-align:center;color:#7f91a8;font-size:11px;padding:18px 0 4px}
+@media(max-width:850px){.layout{grid-template-columns:1fr}.panel{order:2}.wrap{padding:10px}.stats{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:540px){.stats{grid-template-columns:1fr 1fr}.game-top{padding:9px}.game-bottom button{flex:1}.mobile-controls{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px}.mobile-controls button{min-height:48px;font-size:13px}.mobile-controls .wide{grid-column:span 3}.sub{max-width:100%}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+ <div><h1>🏗️ Tower Crane Simulator</h1><div class="sub">A browser-based crane handling challenge · Practice safe lifting</div></div>
+ <div class="pill">Single-player · No installation</div>
+</header>
+<div class="layout">
+ <main class="gamebox">
+  <div class="game-top"><strong>Construction Site</strong><span class="status" id="status">Ready · Start a mission</span></div>
+  <canvas id="game" width="960" height="540" aria-label="Tower crane simulation game"></canvas>
+  <div class="game-bottom">
+   <button class="primary" id="startBtn">▶ Start / Resume</button>
+   <button id="pauseBtn">Ⅱ Pause</button>
+   <button id="resetBtn">↻ Restart</button>
+   <button class="danger" id="stopBtn">■ Emergency stop</button>
+   <button id="soundBtn">🔊 Sound: On</button>
+  </div>
+ </main>
+ <aside class="panel">
+  <h2>📊 Operator dashboard</h2>
+  <div class="stats">
+   <div class="stat"><small>Score</small><strong id="score">0</strong></div>
+   <div class="stat"><small>XP</small><strong id="xp">0</strong></div>
+   <div class="stat"><small>Credits</small><strong id="money">₹0</strong></div>
+   <div class="stat"><small>Elapsed</small><strong id="clock">00:00</strong></div>
+  </div>
+  <h2>📦 Current mission</h2>
+  <div class="mission">
+   <strong id="missionTitle">Mission 1 · Move the load</strong>
+   <p id="missionText">Pick up the cargo from the blue pickup zone and place it in the green delivery zone.</p>
+   <div class="progress"><span id="progress"></span></div>
+  </div>
+  <div class="control">
+   <label for="slew">Slew / rotation <b id="slewVal">0°</b></label>
+   <input id="slew" type="range" min="-65" max="65" value="0" step="1">
+  </div>
+  <div class="control">
+   <label for="trolley">Trolley travel <b id="trolleyVal">0%</b></label>
+   <input id="trolley" type="range" min="70" max="430" value="260" step="1">
+  </div>
+  <div class="control">
+   <label for="hoist">Hoist / cable <b id="hoistVal">260 m</b></label>
+   <input id="hoist" type="range" min="100" max="350" value="260" step="1">
+  </div>
+  <div class="control-grid">
+   <button id="pickBtn">⬇ Pick / Release</button>
+   <button id="centerBtn">◎ Center crane</button>
+  </div>
+  <div class="mobile-controls">
+   <button data-move="slewL">↶ Rotate left</button><button data-move="hoistUp">⬆ Hoist up</button><button data-move="slewR">Rotate right ↷</button>
+   <button data-move="trolleyL">◀ Trolley</button><button data-move="hoistDown">⬇ Hoist down</button><button data-move="trolleyR">Trolley ▶</button>
+   <button class="wide primary" id="mobilePick">Pick up / Release load</button>
+  </div>
+  <div class="notice" id="message" role="status">Tip: Lower the hook near the cargo, then pick it up.</div>
+  <div class="hint"><b>Keyboard:</b> <span class="key">←</span><span class="key">→</span> rotate · <span class="key">A</span><span class="key">D</span> trolley · <span class="key">W</span><span class="key">S</span> hoist · <span class="key">Space</span> pick/release · <span class="key">P</span> pause</div>
+ </aside>
+</div>
+<footer>Educational game only. Real crane operation requires certified training, site procedures and qualified supervision.</footer>
+</div>
+<div class="overlay" id="welcome">
+ <div class="dialog">
+  <h2>Welcome, Operator!</h2>
+  <p>Complete lifting missions by collecting cargo from the pickup zone and carefully placing it in the delivery zone. Avoid dropping the load outside the target.</p>
+  <ul style="color:#c7d3e3;padding-left:20px"><li>Use the sliders or keyboard/mobile controls.</li><li>Lower the hook to the cargo before picking it up.</li><li>Release the cargo inside the green delivery zone.</li></ul>
+  <div class="dialog-actions"><button class="primary" id="welcomeStart">Start simulator</button><button id="helpBtn">How to play</button></div>
+ </div>
+</div>
+<div class="overlay" id="help" style="display:none">
+ <div class="dialog"><h2>How to play</h2><p>1. Rotate and move the trolley until the hook is above the blue cargo.<br>2. Use Hoist / cable to lower the hook. When the hook is close enough, press Pick / Release.<br>3. Carry the cargo to the green delivery zone. Adjust rotation, trolley and cable length.<br>4. Press Pick / Release to place it. Successful delivery unlocks the next mission.</p><p>Keep the load controlled. If you lose control, use Emergency stop or Restart.</p><div class="dialog-actions"><button class="primary" id="closeHelp">Got it</button></div></div>
+</div>
+<script>
+(() => {
+'use strict';
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+const $=id=>document.getElementById(id);
+const W=960,H=540,ground=465,pivot={x:480,y:115};
+const missions=[
+ {name:'Mission 1 · Starter lift',from:690,to:235,weight:2,desc:'Move the light cargo from the pickup zone to the marked delivery zone.'},
+ {name:'Mission 2 · Longer transfer',from:720,to:180,weight:3,desc:'Transfer a medium cargo across the construction site.'},
+ {name:'Mission 3 · Precision placement',from:650,to:300,weight:4,desc:'Place the cargo carefully in the smaller target zone.'},
+ {name:'Mission 4 · Heavy cargo',from:735,to:245,weight:5,desc:'Handle a heavier load. Keep movements smooth.'},
+ {name:'Mission 5 · Final delivery',from:690,to:125,weight:5,desc:'Complete the final long-distance delivery.'}
+];
+let missionIndex=0,score=0,xp=0,money=0,elapsed=0,started=false,paused=false,emergency=false,sound=true;
+let angle=0,trolley=260,cable=260,load=null,loadSwing=0,lastFrame=0,noticeTimer=0;
+let audioCtx=null;
+const ui={slew:$('slew'),trolley:$('trolley'),hoist:$('hoist')};
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const mission=()=>missions[missionIndex%missions.length];
+const rad=d=>d*Math.PI/180;
+function say(t){$('message').textContent=t;noticeTimer=3.5}
+function beep(freq=520,duration=.08){if(!sound)return;try{audioCtx=audioCtx||new(window.AudioContext||window.webkitAudioContext)();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.frequency.value=freq;o.connect(g);g.connect(audioCtx.destination);g.gain.setValueAtTime(.06,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+duration);o.start();o.stop(audioCtx.currentTime+duration)}catch(e){}}
+function geometry(){const a=rad(angle);return{x:pivot.x+Math.cos(a)*trolley,y:pivot.y+Math.sin(a)*trolley+cable}}
+function updateUI(){
+ $('score').textContent=score;$('xp').textContent=xp;$('money').textContent='₹'+money;
+ $('clock').textContent=String(Math.floor(elapsed/60)).padStart(2,'0')+':'+String(Math.floor(elapsed%60)).padStart(2,'0');
+ $('missionTitle').textContent=mission().name;$('missionText').textContent=mission().desc;
+ $('progress').style.width=load?'65%':'0%';
+ $('status').textContent=emergency?'EMERGENCY STOP':paused?'Paused':started?'Operator active':'Ready · Start a mission';
+ $('slewVal').textContent=Math.round(angle)+'°';$('trolleyVal').textContent=Math.round((trolley-70)/3.6)+'%';$('hoistVal').textContent=Math.round(cable)+' m';
+ ui.slew.value=angle;ui.trolley.value=trolley;ui.hoist.value=cable;
+}
+function draw(){
+ ctx.clearRect(0,0,W,H);
+ // sky and distant skyline
+ const sky=ctx.createLinearGradient(0,0,0,H);sky.addColorStop(0,'#9ed1e5');sky.addColorStop(1,'#e5f0e8');ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+ ctx.fillStyle='#d3e5df';for(let i=0;i<10;i++){let x=i*105+12,h=55+(i*37%85);ctx.fillRect(x,ground-h,65,h);ctx.fillStyle='#a9c8c4';for(let y=ground-h+12;y<ground-10;y+=20)for(let xx=x+10;xx<x+60;xx+=20)ctx.fillRect(xx,y,8,9);ctx.fillStyle='#d3e5df'}
+ // ground and zones
+ ctx.fillStyle='#71836c';ctx.fillRect(0,ground,W,H-ground);ctx.fillStyle='#56644f';ctx.fillRect(0,ground+18,W,H-ground-18);
+ const m=mission();zone(m.from,'#3488d8','PICK UP');zone(m.to,'#27a86f','DELIVER');
+ function zone(x,color,label){ctx.fillStyle=color+'33';ctx.fillRect(x-46,ground-28,92,28);ctx.strokeStyle=color;ctx.lineWidth=3;ctx.strokeRect(x-46,ground-28,92,28);ctx.fillStyle='#183047';ctx.font='bold 13px system-ui';ctx.textAlign='center';ctx.fillText(label,x,ground-38)}
+ // crane mast and base
+ ctx.fillStyle='#e0a62f';ctx.fillRect(pivot.x-13,pivot.y,26,ground-pivot.y);
+ ctx.strokeStyle='#8c651d';ctx.lineWidth=3;for(let y=pivot.y+15;y<ground;y+=34){ctx.beginPath();ctx.moveTo(pivot.x-13,y);ctx.lineTo(pivot.x+13,y+34);ctx.moveTo(pivot.x+13,y);ctx.lineTo(pivot.x-13,y+34);ctx.stroke()}
+ ctx.fillStyle='#3d4b5b';ctx.fillRect(pivot.x-40,ground-12,80,12);
+ // jib
+ const a=rad(angle),end={x:pivot.x+Math.cos(a)*450,y:pivot.y+Math.sin(a)*450};
+ ctx.strokeStyle='#e5ad37';ctx.lineWidth=13;ctx.beginPath();ctx.moveTo(pivot.x,pivot.y);ctx.lineTo(end.x,end.y);ctx.stroke();
+ ctx.strokeStyle='#8b641d';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(pivot.x,pivot.y-8);ctx.lineTo(end.x,end.y-8);ctx.stroke();
+ // jib lattice
+ for(let d=30;d<450;d+=32){let x=pivot.x+Math.cos(a)*d,y=pivot.y+Math.sin(a)*d;ctx.fillStyle='#875f1d';ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fill()}
+ const hook=geometry();
+ ctx.fillStyle='#26394a';ctx.beginPath();ctx.arc(hook.x,hook.y,7,0,Math.PI*2);ctx.fill();
+ ctx.strokeStyle='#27384a';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(hook.x,hook.y);ctx.lineTo(hook.x,hook.y+24);ctx.stroke();
+ ctx.beginPath();ctx.arc(hook.x+6,hook.y+25,7,Math.PI*.1,Math.PI*1.3);ctx.stroke();
+ if(load){const lx=load.x,ly=load.y;ctx.strokeStyle='#27384a';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(hook.x,hook.y+24);ctx.lineTo(lx,ly-16);ctx.stroke();drawCargo(lx,ly,m.weight)}
+ else drawCargo(m.from,ground-18,m.weight);
+ // trolley marker
+ ctx.fillStyle='#303c4c';ctx.beginPath();ctx.arc(hook.x,hook.y,10,0,Math.PI*2);ctx.fill();ctx.fillStyle='#f7d16a';ctx.beginPath();ctx.arc(hook.x,hook.y,4,0,Math.PI*2);ctx.fill();
+ // wind indicator
+ ctx.fillStyle='#183047';ctx.font='13px system-ui';ctx.textAlign='left';ctx.fillText('WIND  8 km/h  |  LOAD '+m.weight+' t',18,28);
+ if(paused||emergency){ctx.fillStyle='#0b1729aa';ctx.fillRect(0,0,W,H);ctx.fillStyle='#fff';ctx.textAlign='center';ctx.font='bold 34px system-ui';ctx.fillText(emergency?'EMERGENCY STOP':'PAUSED',W/2,H/2)}
+}
+function drawCargo(x,y,w){ctx.fillStyle='#c56b32';ctx.fillRect(x-23,y-17,46,34);ctx.fillStyle='#e99a52';ctx.fillRect(x-18,y-12,36,8);ctx.strokeStyle='#6e3c24';ctx.lineWidth=2;ctx.strokeRect(x-23,y-17,46,34);ctx.fillStyle='#fff';ctx.font='bold 12px system-ui';ctx.textAlign='center';ctx.fillText(w+'t',x,y+5)}
+function move(key,amount){if(!started||paused||emergency)return;switch(key){case'slewL':angle=clamp(angle-amount,-65,65);break;case'slewR':angle=clamp(angle+amount,-65,65);break;case'trolleyL':trolley=clamp(trolley-amount,70,430);break;case'trolleyR':trolley=clamp(trolley+amount,70,430);break;case'hoistUp':cable=clamp(cable-amount,100,350);break;case'hoistDown':cable=clamp(cable+amount,100,350);break}updateUI()}
+function toggleLoad(){
+ if(!started||paused||emergency){say('Start or resume the simulator first.');return}
+ const p=geometry(),m=mission();
+ if(!load){
+  const cargoX=m.from,cargoY=ground-18;
+  if(Math.hypot(p.x-cargoX,(p.y+26)-cargoY)<48 && cable>200){load={x:p.x,y:p.y+58};say('Cargo attached. Move it to the green delivery zone.');beep(700)}
+  else say('Move the hook over the blue pickup cargo and lower it closer.');
+ }else{
+  const target=m.to;
+  if(Math.abs(load.x-target)<52 && load.y>ground-90){score+=100*m.weight;xp+=25;money+=500*m.weight;missionIndex++;
+   load=null;angle=0;trolley=260;cable=260;elapsed+=0; say(missionIndex>=missions.length?'All missions completed! Great work!':'Delivery successful! Next mission unlocked.');beep(880,.18);
+   if(missionIndex>=missions.length){missionIndex=0;say('Campaign complete! Missions will cycle again with your score preserved.')}
+  }else{say('Not in the delivery zone yet. Position the cargo above the green marker and lower it.');beep(180)}
+ }
+ updateUI();
+}
+function start(){started=true;paused=false;emergency=false;$('welcome').style.display='none';$('help').style.display='none';say('Simulator running. Pick up the cargo from the blue zone.');updateUI();beep(600)}
+function pause(){if(!started)return;paused=!paused;updateUI();say(paused?'Simulation paused.':'Simulation resumed.')}
+function reset(){missionIndex=0;score=0;xp=0;money=0;elapsed=0;angle=0;trolley=260;cable=260;load=null;started=false;paused=false;emergency=false;updateUI();say('Simulation reset. Press Start to begin.');draw()}
+function emergencyStop(){emergency=true;paused=true;updateUI();say('Emergency stop activated. Press Restart to reset the exercise.');beep(140,.2)}
+function tick(ts){const dt=Math.min((ts-lastFrame)/1000,.05)||0;lastFrame=ts;if(started&&!paused&&!emergency){elapsed+=dt;if(load){const p=geometry();load.x+=(p.x-load.x)*Math.min(1,dt*5);load.y+=(p.y+58-load.y)*Math.min(1,dt*5);}}draw();if(noticeTimer>0)noticeTimer-=dt;requestAnimationFrame(tick)}
+ui.slew.addEventListener('input',e=>{angle=+e.target.value;updateUI()});
+ui.trolley.addEventListener('input',e=>{trolley=+e.target.value;updateUI()});
+ui.hoist.addEventListener('input',e=>{cable=+e.target.value;updateUI()});
+$('startBtn').onclick=start;$('welcomeStart').onclick=start;$('pauseBtn').onclick=pause;$('resetBtn').onclick=reset;$('stopBtn').onclick=emergencyStop;
+$('pickBtn').onclick=toggleLoad;$('mobilePick').onclick=toggleLoad;
+$('centerBtn').onclick=()=>{angle=0;trolley=260;updateUI();say('Crane centered.')};
+$('soundBtn').onclick=()=>{sound=!sound;$('soundBtn').textContent=sound?'🔊 Sound: On':'🔇 Sound: Off';if(sound)beep()};
+$('helpBtn').onclick=()=>$('help').style.display='flex';$('closeHelp').onclick=()=>$('help').style.display='none';
+document.querySelectorAll('[data-move]').forEach(b=>{const key=b.dataset.move;b.addEventListener('click',()=>move(key, key.startsWith('slew')?4:key.startsWith('trolley')?16:12))});
+window.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();if(e.repeat)return;const k=e.key.toLowerCase();if(k==='arrowleft')move('slewL',3);if(k==='arrowright')move('slewR',3);if(k==='a')move('trolleyL',12);if(k==='d')move('trolleyR',12);if(k==='w')move('hoistUp',10);if(k==='s')move('hoistDown',10);if(k===' ')toggleLoad();if(k==='p')pause()});
+updateUI();requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
